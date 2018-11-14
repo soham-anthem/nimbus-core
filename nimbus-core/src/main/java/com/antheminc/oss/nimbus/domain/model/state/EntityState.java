@@ -135,26 +135,15 @@ public interface EntityState<T> {
 		
 		@Override
 		boolean isRoot();
-//		@Override
-//		default boolean isRoot() {
-//			return true;
-//		}
 		
 		@Override
 		ExecutionModel<T> findIfRoot();
-//		@Override
-//		default ExecutionModel<T> findIfRoot() {
-//			return this;
-//		}
-		
+
 		@JsonIgnore
 		Command getRootCommand();
 		
 		@JsonIgnore
 		ExecutionRuntime getExecutionRuntime();
-		
-		@JsonIgnore
-		Map<String, Object> getParamRuntimes();
 		
 		<U> U unwrap(Class<U> c);
 	}

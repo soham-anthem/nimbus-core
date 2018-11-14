@@ -29,9 +29,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
 import com.antheminc.oss.nimbus.FrameworkRuntimeException;
@@ -88,43 +88,25 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	private boolean active = true;
 	
 	@JsonIgnore
-	private RemnantState<Boolean> visibleState = this.new RemnantState<>(true);
+	private RemnantState<Boolean> visibleState = this.new RemnantState<>(new RemnantContext<>(true));
 	
 	@JsonIgnore
-	private RemnantState<Boolean> enabledState = this.new RemnantState<>(true);
+	private RemnantState<Boolean> enabledState = this.new RemnantState<>(new RemnantContext<>(true));
 	
 	@JsonIgnore
 	@SuppressWarnings("unchecked")
-	private RemnantState<Class<? extends ValidationGroup>[]> activeValidationGroupsState = new RemnantState<>(new Class[0]);
+	private RemnantState<Class<? extends ValidationGroup>[]> activeValidationGroupsState = new RemnantState<>(new RemnantContext<>(new Class[0]));
 	
 	private List<ParamValue> values;
 	
 	@JsonIgnore
-	private RemnantState<Set<Message>> messageState = this.new RemnantState<Set<Message>>(null) {
-		@Override
-		public boolean hasChanged() {
-			Set<Message> prev = CollectionUtils.isEmpty(getPrevState()) ? null : getPrevState();
-			Set<Message> curr = CollectionUtils.isEmpty(getCurrState()) ? null : getCurrState();
-			
-			boolean isEquals = new EqualsBuilder().append(curr, prev).isEquals();
-			return !isEquals;
-		}
-	};
+	private RemnantState<Set<Message>> messageState = this.new RemnantState<>(new RemnantContext.RemnantCollection<>(null));
 	
 	@JsonIgnore
-	private RemnantState<Set<LabelState>> labelState = this.new RemnantState<Set<LabelState>>(null) {
-		@Override
-		public boolean hasChanged() {
-			Set<LabelState> prev = CollectionUtils.isEmpty(getPrevState()) ? null : getPrevState();
-			Set<LabelState> curr = CollectionUtils.isEmpty(getCurrState()) ? null : getCurrState();
-			
-			boolean isEquals = new EqualsBuilder().append(curr, prev).isEquals();
-			return !isEquals;
-		}
-	};
+	private RemnantState<Set<LabelState>> labelState = this.new RemnantState<>(new RemnantContext.RemnantCollection<>(null));
 	
 	@JsonIgnore
-	private RemnantState<StyleState> styleState = this.new RemnantState<>(null);
+	private RemnantState<StyleState> styleState = this.new RemnantState<>(new RemnantContext<>(null));
 	
 	@Override
 	public boolean hasContextStateChanged() {
@@ -640,18 +622,21 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 		return null;	
 	}
 	
-	@Getter @Setter @ToString(of="currState")
+	@Getter @ToString
 	protected class RemnantState<S> {
-		private S prevState;
-		private S currState;
+		private RemnantContext<S> ctx;
 		
-		public RemnantState(S initState) {
-			this.prevState = initState;
-			this.currState = initState;
+		public RemnantState(RemnantContext<S> ctx) {
+			Assert.notNull(ctx, "Remnant State Context must not be null");
+			this.ctx = ctx;
+		}
+		
+		public S getCurrentState() {
+			return this.ctx.getCurrentState();
 		}
 		
 		public boolean isEquals(S state) {
-			return new EqualsBuilder().append(this.currState, state).isEquals();
+			return this.ctx.isEquals(state);
 		}
 		
 		public boolean setState(S state) {
@@ -673,8 +658,8 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 			}
 			
 			return changeStateTemplate((rt, h, lockId)->{
-				this.prevState = this.currState;
-				this.currState = state;
+				this.ctx.setPreviousState(this.ctx.getCurrentState());
+				this.ctx.setCurrentState(state);
 				
 				emitParamContextEvent();
 				return true;
@@ -683,14 +668,14 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 		}
 		
 		public boolean hasChanged() {
-			boolean isEquals = new EqualsBuilder().append(this.currState, this.prevState).isEquals();
-			return !isEquals;
+			return this.ctx.hasChanged();
 		}
 	}
 	
+	
 	@Override
 	public boolean isVisible() {
-		return visibleState.getCurrState();
+		return visibleState.getCurrentState();
 	}
 	
 	public void setVisible(boolean visible) {
@@ -720,7 +705,7 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	
 	@Override
 	public boolean isEnabled() {
-		return enabledState.getCurrState();
+		return enabledState.getCurrentState();
 	}
 	
 	@Override
@@ -762,7 +747,7 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 
 	@Override
 	public Set<LabelState> getLabels() {
-		return Optional.ofNullable(this.labelState.getCurrState()).map(Collections::unmodifiableSet).orElse(null);
+		return Optional.ofNullable(this.labelState.getCurrentState()).map(Collections::unmodifiableSet).orElse(null);
 	}
 	
 	@Override
@@ -811,7 +796,7 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	
 	@Override
 	public Set<Message> getMessages() {
-		return Optional.ofNullable(this.messageState.getCurrState()).map(Collections::unmodifiableSet).orElse(null);
+		return Optional.ofNullable(this.messageState.getCurrentState()).map(Collections::unmodifiableSet).orElse(null);
 	}
 
 	@Override
@@ -925,7 +910,7 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 
 	@Override
 	public Class<? extends ValidationGroup>[] getActiveValidationGroups() {
-		return this.activeValidationGroupsState.getCurrState();
+		return this.activeValidationGroupsState.getCurrentState();
 	}
 
 	@Override
@@ -1020,7 +1005,7 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 
 	@Override
 	public StyleState getStyle() {
-		return this.styleState.getCurrState();
+		return this.styleState.getCurrentState();
 	}
 
 	@Override

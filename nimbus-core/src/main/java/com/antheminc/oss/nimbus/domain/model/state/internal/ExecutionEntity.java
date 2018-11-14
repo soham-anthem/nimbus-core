@@ -17,8 +17,6 @@ package com.antheminc.oss.nimbus.domain.model.state.internal;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -71,9 +69,7 @@ public class ExecutionEntity<V, C> extends AbstractEntity.IdLong implements Seri
 	
 	private ProcessFlow f;
 	
-	private Map<String, Object> paramRuntimes = new HashMap<>();
-	
-	@JsonIgnore private transient boolean isNew;
+	private boolean isNew;
 	
 	public ExecutionEntity() { }
 	
@@ -328,12 +324,6 @@ public class ExecutionEntity<V, C> extends AbstractEntity.IdLong implements Seri
 		@Override
 		public ExecutionEntity<V, C> getState() {
 			return _this();
-		}
-		
-		@JsonIgnore
-		@Override
-		public Map<String, Object> getParamRuntimes() {
-			return _this().getParamRuntimes();
 		}
 		
 		@JsonIgnore
