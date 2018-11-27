@@ -31,9 +31,11 @@ import com.antheminc.oss.nimbus.domain.model.config.ModelConfig;
 import com.antheminc.oss.nimbus.domain.model.state.EntityState;
 import com.antheminc.oss.nimbus.domain.model.state.EntityState.Model;
 import com.antheminc.oss.nimbus.domain.model.state.EntityStateAspectHandlers;
+import com.antheminc.oss.nimbus.domain.model.state.EntityStateVisitor;
 import com.antheminc.oss.nimbus.domain.model.state.Notification;
 import com.antheminc.oss.nimbus.domain.model.state.Notification.ActionType;
 import com.antheminc.oss.nimbus.domain.model.state.event.StateEventHandlers.OnStateLoadNewHandler;
+import com.antheminc.oss.nimbus.domain.model.state.internal.DefaultEntityStateContext.ModelStateContext;
 import com.antheminc.oss.nimbus.domain.model.state.support.DefaultJsonModelSerializer;
 import com.antheminc.oss.nimbus.support.pojo.CollectionsTemplate;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -61,10 +63,12 @@ public class DefaultModelState<T> extends AbstractEntityState<T> implements Mode
 
 	@JsonIgnore private transient ValidationResult validationResult;
 	
-	@JsonIgnore private transient boolean isNew;
+	@JsonIgnore
+	private final ModelStateContext stateContext;
 	
 	public DefaultModelState() {
 		this.associatedParam = null;
+		this.stateContext = new ModelStateContext();
 	}
 	
 	public DefaultModelState(Param<T> associatedParam, ModelConfig<T> config, EntityStateAspectHandlers provider/*, Model<?> backingCoreModel*/) {
@@ -72,6 +76,8 @@ public class DefaultModelState<T> extends AbstractEntityState<T> implements Mode
 		
 		Objects.requireNonNull(associatedParam, "Associated Param for Model must not be null.");
 		this.associatedParam = associatedParam;
+		
+		this.stateContext = new ModelStateContext();
 	}
 
 	@Transient @JsonIgnore @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
@@ -96,7 +102,7 @@ public class DefaultModelState<T> extends AbstractEntityState<T> implements Mode
 	
 	@Override
 	public boolean isNew() {
-		return getRootExecution().isNew() ? true : this.isNew;
+		return getRootExecution().isNew() ? true : getStateContext().isNew();
 	}
 	
 	@Override
@@ -131,6 +137,17 @@ public class DefaultModelState<T> extends AbstractEntityState<T> implements Mode
 	@Override
 	public ModelConfig<T> getConfig() {
 		return (ModelConfig<T>)super.getConfig();
+	}
+	
+	@Override
+	public void accept(EntityStateVisitor v) {
+		v.visit(this);
+		
+		if(templateParams.isNullOrEmpty())
+			return;
+		
+		templateParams.get().stream()
+			.forEach(v::visit);
 	}
 	
 	@JsonIgnore @Override

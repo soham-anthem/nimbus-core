@@ -30,6 +30,7 @@ import com.antheminc.oss.nimbus.domain.model.config.ParamConfig;
 import com.antheminc.oss.nimbus.domain.model.config.ParamValue;
 import com.antheminc.oss.nimbus.domain.model.state.EntityState.Param;
 import com.antheminc.oss.nimbus.domain.model.state.EntityStateAspectHandlers;
+import com.antheminc.oss.nimbus.domain.model.state.EntityStateVisitor;
 import com.antheminc.oss.nimbus.domain.model.state.ExecutionTxnContext;
 import com.antheminc.oss.nimbus.domain.model.state.Notification;
 import com.antheminc.oss.nimbus.domain.model.state.StateType;
@@ -78,6 +79,11 @@ public class MockParam implements Param<Object> {
 	private boolean leaf;
 	private StyleState style;
 
+	@Override
+	public void accept(EntityStateVisitor v) {
+		v.visit(this);
+	}
+	
 	@Override
 	public String getConfigId() {
 		return getConfig().getId();

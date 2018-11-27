@@ -47,6 +47,7 @@ import com.antheminc.oss.nimbus.domain.model.config.ParamConfig;
 import com.antheminc.oss.nimbus.domain.model.config.ParamValue;
 import com.antheminc.oss.nimbus.domain.model.state.EntityState.Param;
 import com.antheminc.oss.nimbus.domain.model.state.EntityStateAspectHandlers;
+import com.antheminc.oss.nimbus.domain.model.state.EntityStateVisitor;
 import com.antheminc.oss.nimbus.domain.model.state.ExecutionRuntime;
 import com.antheminc.oss.nimbus.domain.model.state.ExecutionTxnContext;
 import com.antheminc.oss.nimbus.domain.model.state.Notification;
@@ -55,6 +56,7 @@ import com.antheminc.oss.nimbus.domain.model.state.ParamEvent;
 import com.antheminc.oss.nimbus.domain.model.state.StateType;
 import com.antheminc.oss.nimbus.domain.model.state.event.StateEventHandlers.OnStateChangeHandler;
 import com.antheminc.oss.nimbus.domain.model.state.event.StateEventHandlers.OnStateLoadHandler;
+import com.antheminc.oss.nimbus.domain.model.state.internal.DefaultEntityStateContext.ParamStateContext;
 import com.antheminc.oss.nimbus.domain.model.state.support.DefaultJsonParamSerializer;
 import com.antheminc.oss.nimbus.entity.Findable;
 import com.antheminc.oss.nimbus.support.Holder;
@@ -85,29 +87,26 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	final private Model<?> parentModel;
 	
 	@JsonIgnore
-	private boolean active = true;
+	private final ParamStateContext stateContext;
 	
 	@JsonIgnore
-	private RemnantState<Boolean> visibleState = this.new RemnantState<>(new RemnantContext<>(true));
+	private RemnantState<Boolean> visibleState;
 	
 	@JsonIgnore
-	private RemnantState<Boolean> enabledState = this.new RemnantState<>(new RemnantContext<>(true));
+	private RemnantState<Boolean> enabledState;
 	
 	@JsonIgnore
-	@SuppressWarnings("unchecked")
-	private RemnantState<Class<? extends ValidationGroup>[]> activeValidationGroupsState = new RemnantState<>(new RemnantContext<>(new Class[0]));
-	
-	private List<ParamValue> values;
+	private RemnantState<Class<? extends ValidationGroup>[]> activeValidationGroupsState;
 	
 	@JsonIgnore
-	private RemnantState<Set<Message>> messageState = this.new RemnantState<>(new RemnantContext.RemnantCollection<>(null));
+	private RemnantState<Set<Message>> messageState;
 	
 	@JsonIgnore
-	private RemnantState<Set<LabelState>> labelState = this.new RemnantState<>(new RemnantContext.RemnantCollection<>(null));
+	private RemnantState<Set<LabelState>> labelState;
 	
 	@JsonIgnore
-	private RemnantState<StyleState> styleState = this.new RemnantState<>(new RemnantContext<>(null));
-	
+	private RemnantState<StyleState> styleState;
+
 	@Override
 	public boolean hasContextStateChanged() {
 		return visibleState.hasChanged() || enabledState.hasChanged() || messageState.hasChanged() || 
@@ -155,9 +154,35 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 		if(!isRoot()) Objects.requireNonNull(parentModel, "Parent model must not be null with code: "+getConfig().getCode());
 		this.parentModel = parentModel;
 		
+		this.stateContext = instantiateContext();
+		instantiateRemnantContext(getStateContext());
+		
 		this.valueAccessor = constructValueAccessor();
 	}
 	
+	@SuppressWarnings("unchecked")
+	protected ParamStateContext instantiateContext() {
+		ParamStateContext ctx = new ParamStateContext();
+		
+		ctx.setActive(true);
+		ctx.setVisibleState(new RemnantContext<>(true));
+		ctx.setEnabledState(new RemnantContext<>(true));
+		ctx.setActiveValidationGroupsState(new RemnantContext<>(new Class[0]));
+		ctx.setMessageState(new RemnantContext.RemnantCollection<>(null));
+		ctx.setLabelState(new RemnantContext.RemnantCollection<>(null));
+		ctx.setStyleState(new RemnantContext<>(null));
+		
+		return ctx;
+	}
+	
+	protected void instantiateRemnantContext(ParamStateContext ctx) {
+		this.visibleState = this.new RemnantState<>(ctx.getVisibleState());
+		this.enabledState = this.new RemnantState<>(ctx.getEnabledState());
+		this.activeValidationGroupsState = new RemnantState<>(ctx.getActiveValidationGroupsState());
+		this.messageState = new RemnantState<>(ctx.getMessageState());
+		this.labelState = new RemnantState<>(ctx.getLabelState());
+		this.styleState = new RemnantState<>(ctx.getStyleState());
+	}
 	
 	protected ValueAccessor constructValueAccessor() {
 		if(getParentModel()==null) 
@@ -232,6 +257,13 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 		return (ParamConfig<T>)super.getConfig();
 	}
 
+	@Override
+	public void accept(EntityStateVisitor v) {
+		v.visit(this);
+		
+		if(isNested()) 
+			findIfNested().accept(v);
+	}
 
 	@Override
 	public void fireRules() {
@@ -736,11 +768,16 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 
 	
 	@Override
+	public List<ParamValue> getValues() {
+		return getStateContext().getValues();
+	}
+	
+	@Override
 	public void setValues(List<ParamValue> values) {
 		if(getValues()==values)
 			return;
 		
-		this.values = values;
+		getStateContext().setValues(values);
 		emitParamContextEvent();
 	}
 	
@@ -817,20 +854,20 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	
 	@Override
 	public boolean isActive() {
-		if(!active)
-			return active;
+		if(!getStateContext().isActive())
+			return getStateContext().isActive();
 		
 		Param<?> parentParam = Optional.ofNullable(getParentModel())
 			.map(Model::getAssociatedParam)
 			.orElse(null);
 			
 		if(parentParam==null)
-			return active;
+			return getStateContext().isActive();
 		
 		if(!parentParam.isActive())
 			return false;
 		
-		return active;
+		return getStateContext().isActive();
 	}
 	
 	@Override
@@ -858,11 +895,11 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	
 	private boolean affectToggleActivate(boolean to) {
 		// refer to field directly, instead of getter method
-		if(active==to)
+		if(getStateContext().isActive()==to)
 			return false;
 
 		// toggle
-		setActive(to);
+		getStateContext().setActive(to);
 
 		// notify mapped subscribers, if any
 		//==emitNotification(new Notification<>(this, ActionType._active, this));

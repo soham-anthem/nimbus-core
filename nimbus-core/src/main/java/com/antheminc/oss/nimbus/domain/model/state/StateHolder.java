@@ -55,6 +55,11 @@ public class StateHolder {
 		}
 		
 		@Override
+		public void accept(EntityStateVisitor v) {
+			throw throwEx();
+		}
+		
+		@Override
 		public String getConfigId() {
 			return this.ref.getConfigId();
 		}
