@@ -10,9 +10,9 @@ import com.antheminc.oss.nimbus.domain.model.state.EntityState.Param;
  * @author Soham Chakravarti
  *
  */
-public interface EntityStateVisitor {
+public interface EntityStateVisitor<M extends Model<?>, P extends Param<?>> {
 
-	void visit(Param<?> p);
+	void visit(M m);
 	
-	void visit(Model<?> m);
+	void visit(P p);
 }

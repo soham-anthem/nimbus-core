@@ -106,7 +106,7 @@ public interface EntityState<T> {
 	
 	Mapped<T, ?> findIfMapped();
 	
-	void accept(EntityStateVisitor v);
+	void accept(EntityStateVisitor<Model<?>, Param<?>> v);
 	
 	@Getter @RequiredArgsConstructor @ToString
 	public static class ValueAccessor {

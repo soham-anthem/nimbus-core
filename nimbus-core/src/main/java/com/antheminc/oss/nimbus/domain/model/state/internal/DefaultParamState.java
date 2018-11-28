@@ -258,7 +258,7 @@ public class DefaultParamState<T> extends AbstractEntityState<T> implements Para
 	}
 
 	@Override
-	public void accept(EntityStateVisitor v) {
+	public void accept(EntityStateVisitor<Model<?>, Param<?>> v) {
 		v.visit(this);
 		
 		if(isNested()) 

@@ -140,7 +140,7 @@ public class DefaultModelState<T> extends AbstractEntityState<T> implements Mode
 	}
 	
 	@Override
-	public void accept(EntityStateVisitor v) {
+	public void accept(EntityStateVisitor<Model<?>, Param<?>> v) {
 		v.visit(this);
 		
 		if(templateParams.isNullOrEmpty())

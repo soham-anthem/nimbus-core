@@ -50,4 +50,18 @@ public class DefaultEntityStateContext {
 	private ParamStateContext param;
 	
 	private ModelStateContext model;
+	
+	public ModelStateContext instantiateModelContextIfNull() {
+		if(model==null)
+			this.model = new ModelStateContext();
+		
+		return model;
+	}
+	
+	public ParamStateContext instantiateParamContextIfNull() {
+		if(param==null)
+			this.param = new ParamStateContext();
+		
+		return param;
+	}
 }
