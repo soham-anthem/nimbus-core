@@ -19,6 +19,8 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.Random;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -31,9 +33,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.antheminc.oss.nimbus.channel.web.WebActionController;
+import com.antheminc.oss.nimbus.domain.cmd.Action;
 import com.antheminc.oss.nimbus.domain.cmd.CommandMessageConverter;
+import com.antheminc.oss.nimbus.domain.model.state.EntityState.Param;
 import com.antheminc.oss.nimbus.entity.client.Client;
 import com.antheminc.oss.nimbus.test.FrameworkIntegrationTestScenariosApplication;
+import com.antheminc.oss.nimbus.test.domain.support.utils.ExtractResponseOutputUtils;
+import com.antheminc.oss.nimbus.test.domain.support.utils.MockHttpRequestBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -84,5 +90,20 @@ public abstract class AbstractFrameworkIntegrationTests {
 	@After
 	public void tearDown() {
 		mt.getDb().drop();
+	}
+	
+	
+	public Param<?> invokeNew(String uri, String payload) {
+		HttpServletRequest httpReq = MockHttpRequestBuilder.withUri(uri)
+				.addAction(Action._new)
+				.getMock();
+			
+		Object controllerResp = controller.handleGet(httpReq, payload);
+		assertNotNull(controllerResp);
+		
+		Param<?> p = ExtractResponseOutputUtils.extractOutput(controllerResp);
+		assertNotNull(p);
+		
+		return p;
 	}
 }

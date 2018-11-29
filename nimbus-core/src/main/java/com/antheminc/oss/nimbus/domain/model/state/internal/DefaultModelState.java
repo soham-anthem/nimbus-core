@@ -147,7 +147,7 @@ public class DefaultModelState<T> extends AbstractEntityState<T> implements Mode
 			return;
 		
 		templateParams.get().stream()
-			.forEach(v::visit);
+			.forEach(p -> p.accept(v));
 	}
 	
 	@JsonIgnore @Override
